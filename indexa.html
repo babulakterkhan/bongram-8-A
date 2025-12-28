@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Marksheet Print</title>
+<style>
+    body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f2f5; padding: 20px; margin: 0; }
+    
+    /* সার্চ কন্ট্রোল বক্স */
+    .controls { max-width: 500px; margin: 0 auto 20px; text-align: center; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    input { padding: 10px; width: 150px; border: 1px solid #ccc; border-radius: 4px; outline: none; }
+    button { padding: 10px 15px; cursor: pointer; background: #0d6efd; color: #fff; border: none; border-radius: 4px; font-weight: bold; margin-left: 5px; }
+    
+    /* মার্কশিট ডিজাইন */
+    .marksheet { 
+        max-width: 650px; 
+        margin: 0 auto; 
+        background: #fff; 
+        padding: 30px; 
+        border: 2px solid #0d6efd; 
+        display: none; 
+        box-sizing: border-box;
+    }
+    
+    .header { text-align: center; border-bottom: 2px solid #0d6efd; margin-bottom: 20px; padding-bottom: 10px; }
+    .header h2 { margin: 0; color: #0d6efd; font-size: 24px; text-transform: uppercase; }
+    .header p { margin: 5px 0; font-size: 14px; font-weight: bold; }
+
+    .info { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; font-size: 14px; }
+    .info div { background: #f9f9f9; padding: 8px; border: 1px solid #eee; }
+
+    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    th { background: #0d6efd; color: #fff; padding: 8px; font-size: 13px; border: 1px solid #0d6efd; }
+    td { border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 13px; }
+    .bold-text { font-weight: bold; }
+
+    .summary { display: flex; justify-content: space-between; gap: 10px; }
+    .summary div { flex: 1; border: 1px solid #0d6efd; padding: 10px; text-align: center; }
+    .summary h4 { margin: 0; font-size: 12px; color: #333; }
+    .summary p { margin: 5px 0 0; font-size: 18px; font-weight: bold; color: #000; }
+
+    .footer { display: flex; justify-content: space-between; margin-top: 60px; }
+    .footer span { border-top: 1px solid #000; padding-top: 5px; width: 120px; text-align: center; font-size: 12px; font-weight: bold; }
+
+    /* প্রিন্ট সেটিংস */
+    @media print {
+        @page { size: auto; margin: 10mm; }
+        body { background: #fff; padding: 0; }
+        .controls, .print-btn-hidden { display: none !important; }
+        .marksheet { 
+            display: block !important; 
+            border: 2px solid #000; 
+            width: 100%; 
+            max-width: 100%;
+            margin: 0;
+            padding: 20px;
+        }
+        th { background: #f0f0f0 !important; color: #000 !important; border: 1px solid #000; }
+        td { border: 1px solid #000; }
+        .summary div { border: 1px solid #000; }
+        .header h2 { color: #000; }
+    }
+</style>
+</head>
+<body>
+
+<div class="controls">
+    <h3>Result Search</h3>
+    <input id="rollInput" type="number" placeholder="Enter Roll">
+    <button onclick="search()">Search</button>
+</div>
+
+<div id="marksheetBox" class="marksheet">
+    <div style="text-align: right; margin-bottom: 10px;">
+        <button class="print-btn-hidden" onclick="window.print()" style="background: #198754; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">Print Marksheet</button>
+    </div>
+
+    <div class="header">
+        <h2>BONGRAM DR. RAMJAN ALI HIGH SCHOOL</h2>
+        <p>ANNUAL EXAM-2025, CLASS: EIGHT, SECTION: B</p>
+        <p>Academic Transcript</p>
+    </div>
+
+    <div class="info">
+        <div><b>Name:</b> <span id="sName"></span></div>
+        <div><b>Roll:</b> <span id="sRoll"></span></div>
+        <div><b>Group:</b> General</div>
+        <div><b>Status:</b> <span id="sStatus"></span></div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Subject</th>
+                <th>MCQ</th>
+                <th>CQ</th>
+                <th>Prac</th>
+                <th>Total</th>
+                <th>GP</th>
+                <th>Grade</th>
+            </tr>
+        </thead>
+        <tbody id="subjectBody"></tbody>
+    </table>
+
+    <div class="summary">
+        <div><h4>Total Marks</h4><p id="sTotal"></p></div>
+        <div><h4>GPA</h4><p id="sGPA"></p></div>
+        <div><h4>Failed Sub</h4><p id="sFail"></p></div>
+    </div>
+
+    <div class="footer">
+        <span>Class Teacher</span>
+        <span>Headmaster</span>
+    </div>
+</div>
+
+<script>
+    const studentData = [
+   
+  {
+    "name": "MD. RASADUL ISLAM",
+    "roll": "3",
+    "total_score": "512",
+    "gpa": "A- (3.93)",
+    "failed_count": 0,
+    "subjects": [
+      {"c": "101-102", "n": "Bangla 1st & Bangla 2nd", "m": "20 +", "cq": "64 + 40", "p": "+", "t": "124", "gp": "5", "g": "A+"},
+      {"c": "107-108", "n": "English 1st & English 2nd", "m": "+", "cq": "45 + 17", "p": "+", "t": "62", "gp": "2", "g": "C"},
+      {"c": "154", "n": "ICT", "m": "", "cq": "41", "p": "", "t": "41", "gp": "5", "g": "A+"},
+      {"c": "111", "n": "Islam & Moral Education", "m": "19", "cq": "56", "p": "", "t": "75", "gp": "4", "g": "A"},
+      {"c": "109", "n": "MATH", "m": "20", "cq": "41", "p": "", "t": "61", "gp": "3.5", "g": "A-"},
+      {"c": "150", "n": "Bangladesh & World", "m": "18", "cq": "55", "p": "", "t": "73", "gp": "4", "g": "A"},
+      {"c": "127", "n": "General Science", "m": "21", "cq": "55", "p": "", "t": "76", "gp": "4", "g": "A"}
+    ]
+  },
+  {
+    "name": "MD. SAJIDUL ISLAM SOWAD",
+    "roll": "1",
+    "total_score": "486",
+    "gpa": "A- (3.71)",
+    "failed_count": 0,
+    "subjects": [
+      {"c": "101-102", "n": "Bangla 1st & Bangla 2nd", "m": "16 +", "cq": "51 + 40", "p": "+", "t": "107", "gp": "4", "g": "A"},
+      {"c": "107-108", "n": "English 1st & English 2nd", "m": "+", "cq": "50 + 17", "p": "+", "t": "67", "gp": "2", "g": "C"},
+      {"c": "154", "n": "ICT", "m": "", "cq": "45", "p": "", "t": "45", "gp": "5", "g": "A+"},
+      {"c": "111", "n": "Islam & Moral Education", "m": "20", "cq": "52", "p": "", "t": "72", "gp": "4", "g": "A"},
+      {"c": "109", "n": "MATH", "m": "20", "cq": "32", "p": "", "t": "52", "gp": "3", "g": "B"},
+      {"c": "150", "n": "Bangladesh & World", "m": "16", "cq": "54", "p": "", "t": "70", "gp": "4", "g": "A"},
+      {"c": "127", "n": "General Science", "m": "23", "cq": "50", "p": "", "t": "73", "gp": "4", "g": "A"}
+    ]
+  },
+  {
+    "name": "MD. RIFAT HOSSEN",
+    "roll": "4",
+    "total_score": "463",
+    "gpa": "B (3.43)",
+    "failed_count": 0,
+    "subjects": [
+      {"c": "101-102", "n": "Bangla 1st & Bangla 2nd", "m": "10 +", "cq": "53 + 38", "p": "+", "t": "101", "gp": "3.5", "g": "A-"},
+      {"c": "107-108", "n": "English 1st & English 2nd", "m": "+", "cq": "41 + 17", "p": "+", "t": "58", "gp": "1", "g": "D"},
+      {"c": "154", "n": "ICT", "m": "", "cq": "42", "p": "", "t": "42", "gp": "5", "g": "A+"},
+      {"c": "111", "n": "Islam & Moral Education", "m": "17", "cq": "51", "p": "", "t": "68", "gp": "3.5", "g": "A-"},
+      {"c": "109", "n": "MATH", "m": "12", "cq": "32", "p": "", "t": "44", "gp": "2", "g": "C"},
+      {"c": "150", "n": "Bangladesh & World", "m": "17", "cq": "53", "p": "", "t": "70", "gp": "4", "g": "A"},
+      {"c": "127", "n": "General Science", "m": "23", "cq": "57", "p": "", "t": "80", "gp": "5", "g": "A+"}
+    ]
+  },
+  {
+    "name": "MD. NAHID ISLAM NIROB",
+    "roll": "2",
+    "total_score": "437",
+    "gpa": "B (3.21)",
+    "failed_count": 0,
+    "subjects": [
+      {"c": "101-102", "n": "Bangla 1st & Bangla 2nd", "m": "19 +", "cq": "47 + 37", "p": "+", "t": "103", "gp": "3.5", "g": "A-"},
+      {"c": "107-108", "n": "English 1st & English 2nd", "m": "+", "cq": "46 + 17", "p": "+", "t": "63", "gp": "2", "g": "C"},
+      {"c": "154", "n": "ICT", "m": "", "cq": "40", "p": "", "t": "40", "gp": "5", "g": "A+"},
+      {"c": "111", "n": "Islam & Moral Education", "m": "17", "cq": "40", "p": "", "t": "57", "gp": "3", "g": "B"},
+      {"c": "109", "n": "MATH", "m": "22", "cq": "24", "p": "", "t": "46", "gp": "2", "g": "C"},
+      {"c": "150", "n": "Bangladesh & World", "m": "20", "cq": "50", "p": "", "t": "70", "gp": "4", "g": "A"},
+      {"c": "127", "n": "General Science", "m": "18", "cq": "40", "p": "", "t": "58", "gp": "3", "g": "B"}
+    ]
+  },
+  {
+    "name": "MD. ALIF MOLLA",
+    "roll": "5",
+    "total_score": "413",
+    "gpa": "B (3.14)",
+    "failed_count": 0,
+    "subjects": [
+      {"c": "101-102", "n": "Bangla 1st & Bangla 2nd", "m": "10 +", "cq": "48 + 38", "p": "+", "t": "96", "gp": "3.5", "g": "A-"},
+      {"c": "107-108", "n": "English 1st & English 2nd", "m": "+", "cq": "41 + 17", "p": "+", "t": "58", "gp": "1", "g": "D"},
+      {"c": "154", "n": "ICT", "m": "", "cq": "41", "p": "", "t": "41", "gp": "5", "g": "A+"},
+      {"c": "111", "n": "Islam & Moral Education", "m": "17", "cq": "35", "p": "", "t": "52", "gp": "3", "g": "B"},
+      {"c": "109", "n": "MATH", "m": "20", "cq": "34", "p": "", "t": "54", "gp": "3", "g": "B"},
+      {"c": "150", "n": "Bangladesh & World", "m": "10", "cq": "50", "p": "", "t": "60", "gp": "3.5", "g": "A-"},
+      {"c": "127", "n": "General Science", "m": "14", "cq": "38", "p": "", "t": "52", "gp": "3", "g": "B"}
+    ]
+  },
+  {
+    "name": "MD. ABDULLAH HOSSEN",
+    "roll": "10",
+    "total_score": "411",
+    "gpa": "B (3.14)",
+    "failed_count": 0,
+    "subjects": [
+      {"c": "101-102", "n": "Bangla 1st & Bangla 2nd", "m": "18 +", "cq": "45 + 31", "p": "+", "t": "94", "gp": "3.5", "g": "A-"},
+      {"c": "107-108", "n": "English 1st & English 2nd", "m": "+", "cq": "37 + 17", "p": "+", "t": "54", "gp": "1", "g": "D"},
+      {"c": "154", "n": "ICT", "m": "", "cq": "42", "p": "", "t": "42", "gp": "5", "g": "A+"},
+      {"c": "111", "n": "Islam & Moral Education", "m": "18", "cq": "35", "p": "", "t": "53", "gp": "3", "g": "B"},
+      {"c": "109", "n": "MATH", "m": "24", "cq": "26", "p": "", "t": "50", "gp": "3", "g": "B"},
+      {"c": "150", "n": "Bangladesh & World", "m": "15", "cq": "48", "p": "", "t": "63", "gp": "3.5", "g": "A-"},
+      {"c": "127", "n": "General Science", "m": "18", "cq": "37", "p": "", "t": "55", "gp": "3", "g": "B"}
+    ]
+  },
+  {
+    "name": "MD. MAHFUJUR RAHMAN",
+    "roll": "9",
+    "total_score": "404",
+    "gpa": "B (3.0)",
+    "failed_count": 0,
+    "subjects": [
+      {"c": "101-102", "n": "Bangla 1st & Bangla 2nd", "m": "18 +", "cq": "41 + 29", "p": "+", "t": "88", "gp": "3", "g": "B"},
+      {"c": "107-108", "n": "English 1st & English 2nd", "m": "+", "cq": "37 + 17", "p": "+", "t": "54", "gp": "1", "g": "D"},
+      {"c": "154", "n": "ICT", "m": "", "cq": "42", "p": "", "t": "42", "gp": "5", "g": "A+"},
+      {"c": "111", "n": "Islam & Moral Education", "m": "17", "cq": "35", "p": "", "t": "52", "gp": "3", "g": "B"},
+      {"c": "109", "n": "MATH", "m": "22", "cq": "25", "p": "", "t": "47", "gp": "2", "g": "C"},
+      {"c": "150", "n": "Bangladesh & World", "m": "15", "cq": "46", "p": "", "t": "61", "gp": "3.5", "g": "A-"},
+      {"c": "127", "n": "General Science", "m": "20", "cq": "40", "p": "", "t": "60", "gp": "3.5", "g": "A-"}
+    ]
+  },
+  {
+    "name": "MD. RONY HOSSEN",
+    "roll": "8",
+    "total_score": "366",
+    "gpa": "F (0.0)",
+    "failed_count": 1,
+    "subjects": [
+      {"c": "101-102", "n": "Bangla 1st & Bangla 2nd", "m": "9 +", "cq": "31 + 31", "p": "+", "t": "71", "gp": "0", "g": "F"},
+      {"c": "107-108", "n": "English 1st & English 2nd", "m": "+", "cq": "40 + 17", "p": "+", "t": "57", "gp": "1", "g": "D"},
+      {"c": "154", "n": "ICT", "m": "", "cq": "34", "p": "", "t": "34", "gp": "3.5", "g": "A-"},
+      {"c": "111", "n": "Islam & Moral Education", "m": "17", "cq": "33", "p": "", "t": "50", "gp": "3", "g": "B"},
+      {"c": "109", "n": "MATH", "m": "22", "cq": "24", "p": "", "t": "46", "gp": "2", "g": "C"},
+      {"c": "150", "n": "Bangladesh & World", "m": "11", "cq": "43", "p": "", "t": "54", "gp": "3", "g": "B"},
+      {"c": "127", "n": "General Science", "m": "17", "cq": "37", "p": "", "t": "54", "gp": "3", "g": "B"}
+    ]
+  },
+  {
+    "name": "MD. NAHID ISLAM",
+    "roll": "11",
+    "total_score": "357",
+    "gpa": "F (0.0)",
+    "failed_count": 1,
+    "subjects": [
+      {"c": "101-102", "n": "Bangla 1st & Bangla 2nd", "m": "11 +", "cq": "40 + 32", "p": "+", "t": "83", "gp": "3", "g": "B"},
+      {"c": "107-108", "n": "English 1st & English 2nd", "m": "+", "cq": "33 + 3", "p": "+", "t": "36", "gp": "0", "g": "F"},
+      {"c": "154", "n": "ICT", "m": "", "cq": "44", "p": "", "t": "44", "gp": "5", "g": "A+"},
+      {"c": "111", "n": "Islam & Moral Education", "m": "17", "cq": "35", "p": "", "t": "52", "gp": "3", "g": "B"},
+      {"c": "109", "n": "MATH", "m": "20", "cq": "24", "p": "", "t": "44", "gp": "2", "g": "C"},
+      {"c": "150", "n": "Bangladesh & World", "m": "15", "cq": "45", "p": "", "t": "60", "gp": "3.5", "g": "A-"},
+      {"c": "127", "n": "General Science", "m": "12", "cq": "26", "p": "", "t": "38", "gp": "1", "g": "D"}
+    ]
+  },
+  {
+    "name": "MD. SOBUJ MIA",
+    "roll": "6",
+    "total_score": "343",
+    "gpa": "F (0.0)",
+    "failed_count": 2,
+    "subjects": [
+      {"c": "101-102", "n": "Bangla 1st & Bangla 2nd", "m": "9 +", "cq": "28 + 28", "p": "+", "t": "65", "gp": "0", "g": "F"},
+      {"c": "107-108", "n": "English 1st & English 2nd", "m": "+", "cq": "40 + 17", "p": "+", "t": "57", "gp": "1", "g": "D"},
+      {"c": "154", "n": "ICT", "m": "", "cq": "34", "p": "", "t": "34", "gp": "3.5", "g": "A-"},
+      {"c": "111", "n": "Islam & Moral Education", "m": "17", "cq": "30", "p": "", "t": "47", "gp": "2", "g": "C"},
+      {"c": "109", "n": "MATH", "m": "22", "cq": "12", "p": "", "t": "34", "gp": "0", "g": "F"},
+      {"c": "150", "n": "Bangladesh & World", "m": "13", "cq": "40", "p": "", "t": "53", "gp": "3", "g": "B"},
+      {"c": "127", "n": "General Science", "m": "13", "cq": "40", "p": "", "t": "53", "gp": "3", "g": "B"}
+    ]
+  },
+  {
+    "name": "MD. AKASH MAHMUD",
+    "roll": "12",
+    "total_score": "329",
+    "gpa": "F (0.0)",
+    "failed_count": 1,
+    "subjects": [
+      {"c": "101-102", "n": "Bangla 1st & Bangla 2nd", "m": "11 +", "cq": "34 + 31", "p": "+", "t": "76", "gp": "3", "g": "B"},
+      {"c": "107-108", "n": "English 1st & English 2nd", "m": "+", "cq": "37 + 3", "p": "+", "t": "40", "gp": "0", "g": "F"},
+      {"c": "154", "n": "ICT", "m": "", "cq": "32", "p": "", "t": "32", "gp": "3.5", "g": "A-"},
+      {"c": "111", "n": "Islam & Moral Education", "m": "15", "cq": "30", "p": "", "t": "45", "gp": "2", "g": "C"},
+      {"c": "109", "n": "MATH", "m": "22", "cq": "25", "p": "", "t": "47", "gp": "2", "g": "C"},
+      {"c": "150", "n": "Bangladesh & World", "m": "13", "cq": "40", "p": "", "t": "53", "gp": "3", "g": "B"},
+      {"c": "127", "n": "General Science", "m": "10", "cq": "26", "p": "", "t": "36", "gp": "1", "g": "D"}
+    ]
+  },
+  {
+    "name": "MD. SHIHAB HOSSEN",
+    "roll": "20",
+    "total_score": "319",
+    "gpa": "F (0.0)",
+    "failed_count": 2,
+    "subjects": [
+      {"c": "101-102", "n": "Bangla 1st & Bangla 2nd", "m": "13 +", "cq": "28 + 23", "p": "+", "t": "64", "gp": "2", "g": "C"},
+      {"c": "107-108", "n": "English 1st & English 2nd", "m": "+", "cq": "33 + 3", "p": "+", "t": "36", "gp": "0", "g": "F"},
+      {"c": "154", "n": "ICT", "m": "", "cq": "41", "p": "", "t": "41", "gp": "5", "g": "A+"},
+      {"c": "111", "n": "Islam & Moral Education", "m": "20", "cq": "31", "p": "", "t": "51", "gp": "3", "g": "B"},
+      {"c": "109", "n": "MATH", "m": "22", "cq": "4", "p": "", "t": "26", "gp": "0", "g": "F"},
+      {"c": "150", "n": "Bangladesh & World", "m": "16", "cq": "44", "p": "", "t": "60", "gp": "3.5", "g": "A-"},
+      {"c": "127", "n": "General Science", "m": "11", "cq": "30", "p": "", "t": "41", "gp": "2", "g": "C"}
+    ]
+  },
+  {
+    "name": "MD. SHAMSUL ALAM",
+    "roll": "23",
+    "total_score": "285",
+    "gpa": "F (0.0)",
+    "failed_count": 3,
+    "subjects": [
+      {"c": "101-102", "n": "Bangla 1st & Bangla 2nd", "m": "7 +", "cq": "32 + 26", "p": "+", "t": "65", "gp": "0", "g": "F"},
+      {"c": "107-108", "n": "English 1st & English 2nd", "m": "+", "cq": "7 + 3", "p": "+", "t": "10", "gp": "0", "g": "F"},
+      {"c": "154", "n": "ICT", "m": "", "cq": "42", "p": "", "t": "42", "gp": "5", "g": "A+"},
+      {"c": "111", "n": "Islam & Moral Education", "m": "14", "cq": "40", "p": "", "t": "54", "gp": "3", "g": "B"},
+      {"c": "109", "n": "MATH", "m": "20", "cq": "8", "p": "", "t": "28", "gp": "0", "g": "F"},
+      {"c": "150", "n": "Bangladesh & World", "m": "10", "cq": "38", "p": "", "t": "48", "gp": "2", "g": "C"},
+      {"c": "127", "n": "General Science", "m": "12", "cq": "26", "p": "", "t": "38", "gp": "1", "g": "D"}
+    ]
+  },
+  {
+    "name": "MD. MOSTAK AHMED",
+    "roll": "15",
+    "total_score": "279",
+    "gpa": "F (0.0)",
+    "failed_count": 3,
+    "subjects": [
+      {"c": "101-102", "n": "Bangla 1st & Bangla 2nd", "m": "10 +", "cq": "27 + 23", "p": "+", "t": "60", "gp": "2", "g": "C"},
+      {"c": "107-108", "n": "English 1st & English 2nd", "m": "+", "cq": "13 + 3", "p": "+", "t": "16", "gp": "0", "g": "F"},
+      {"c": "154", "n": "ICT", "m": "", "cq": "43", "p": "", "t": "43", "gp": "5", "g": "A+"},
+      {"c": "111", "n": "Islam & Moral Education", "m": "15", "cq": "27", "p": "", "t": "42", "gp": "2", "g": "C"},
+      {"c": "109", "n": "MATH", "m": "23", "cq": "10", "p": "", "t": "33", "gp": "0", "g": "F"},
+      {"c": "150", "n": "Bangladesh & World", "m": "10", "cq": "40", "p": "", "t": "50", "gp": "3", "g": "B"},
+      {"c": "127", "n": "General Science", "m": "9", "cq": "26", "p": "", "t": "35", "gp": "0", "g": "F"}
+    ]
+  },
+  {
+    "name": "MD. NAJMUL HOSSEN",
+    "roll": "13",
+    "total_score": "257",
+    "gpa": "F (0.0)",
+    "failed_count": 4,
+    "subjects": [
+      {"c": "101-102", "n": "Bangla 1st & Bangla 2nd", "m": "9 +", "cq": "31 + 24", "p": "+", "t": "64", "gp": "0", "g": "F"},
+      {"c": "107-108", "n": "English 1st & English 2nd", "m": "+", "cq": "5 + 3", "p": "+", "t": "8", "gp": "0", "g": "F"},
+      {"c": "154", "n": "ICT", "m": "", "cq": "43", "p": "", "t": "43", "gp": "5", "g": "A+"},
+      {"c": "111", "n": "Islam & Moral Education", "m": "8", "cq": "24", "p": "", "t": "32", "gp": "0", "g": "F"},
+      {"c": "109", "n": "MATH", "m": "10", "cq": "24", "p": "", "t": "34", "gp": "1", "g": "D"},
+      {"c": "150", "n": "Bangladesh & World", "m": "10", "cq": "31", "p": "", "t": "41", "gp": "2", "g": "C"},
+      {"c": "127", "n": "General Science", "m": "9", "cq": "26", "p": "", "t": "35", "gp": "0", "g": "F"}
+    ]
+  },
+  {
+    "name": "MD. SHAKIB HASAN",
+    "roll": "22",
+    "total_score": "245",
+    "gpa": "F (0.0)",
+    "failed_count": 4,
+    "subjects": [
+      {"c": "101-102", "n": "Bangla 1st & Bangla 2nd", "m": "7 +", "cq": "27 + 24", "p": "+", "t": "58", "gp": "0", "g": "F"},
+      {"c": "107-108", "n": "English 1st & English 2nd", "m": "+", "cq": "4 + 3", "p": "+", "t": "7", "gp": "0", "g": "F"},
+      {"c": "154", "n": "ICT", "m": "", "cq": "42", "p": "", "t": "42", "gp": "5", "g": "A+"},
+      {"c": "111", "n": "Islam & Moral Education", "m": "4", "cq": "26", "p": "", "t": "30", "gp": "0", "g": "F"},
+      {"c": "109", "n": "MATH", "m": "22", "cq": "2", "p": "", "t": "24", "gp": "0", "g": "F"},
+      {"c": "150", "n": "Bangladesh & World", "m": "10", "cq": "35", "p": "", "t": "45", "gp": "2", "g": "C"},
+      {"c": "127", "n": "General Science", "m": "13", "cq": "26", "p": "", "t": "39", "gp": "1", "g": "D"}
+    ]
+  },
+  {
+    "name": "MD. JIHAD ALI",
+    "roll": "28",
+    "total_score": "225",
+    "gpa": "F (0.0)",
+    "failed_count": 5,
+    "subjects": [
+      {"c": "101-102", "n": "Bangla 1st & Bangla 2nd", "m": "6 +", "cq": "19 + 25", "p": "+", "t": "50", "gp": "0", "g": "F"},
+      {"c": "107-108", "n": "English 1st & English 2nd", "m": "+", "cq": "5 + 3", "p": "+", "t": "8", "gp": "0", "g": "F"},
+      {"c": "154", "n": "ICT", "m": "", "cq": "33", "p": "", "t": "33", "gp": "3.5", "g": "A-"},
+      {"c": "111", "n": "Islam & Moral Education", "m": "10", "cq": "20", "p": "", "t": "30", "gp": "0", "g": "F"},
+      {"c": "109", "n": "MATH", "m": "22", "cq": "12", "p": "", "t": "34", "gp": "0", "g": "F"},
+      {"c": "150", "n": "Bangladesh & World", "m": "12", "cq": "24", "p": "", "t": "36", "gp": "1", "g": "D"},
+      {"c": "127", "n": "General Science", "m": "13", "cq": "21", "p": "", "t": "34", "gp": "0", "g": "F"}
+    ]
+  },
+  {
+    "name": "MD. KAMRIL ISLAM",
+    "roll": "19",
+    "total_score": "219",
+    "gpa": "F (0.0)",
+    "failed_count": 5,
+    "subjects": [
+      {"c": "101-102", "n": "Bangla 1st & Bangla 2nd", "m": "12 +", "cq": "21 + 23", "p": "+", "t": "56", "gp": "0", "g": "F"},
+      {"c": "107-108", "n": "English 1st & English 2nd", "m": "+", "cq": "11 + 3", "p": "+", "t": "14", "gp": "0", "g": "F"},
+      {"c": "154", "n": "ICT", "m": "", "cq": "32", "p": "", "t": "32", "gp": "3.5", "g": "A-"},
+      {"c": "111", "n": "Islam & Moral Education", "m": "9", "cq": "25", "p": "", "t": "34", "gp": "0", "g": "F"},
+      {"c": "109", "n": "MATH", "m": "10", "cq": "0", "p": "", "t": "10", "gp": "0", "g": "F"},
+      {"c": "150", "n": "Bangladesh & World", "m": "10", "cq": "31", "p": "", "t": "41", "gp": "2", "g": "C"},
+      {"c": "127", "n": "General Science", "m": "12", "cq": "20", "p": "", "t": "32", "gp": "0", "g": "F"}
+    ]
+  },
+  {
+    "name": "MD. SABBIR HOSSEN",
+    "roll": "29",
+    "total_score": "199",
+    "gpa": "F (0.0)",
+    "failed_count": 6,
+    "subjects": [
+      {"c": "101-102", "n": "Bangla 1st & Bangla 2nd", "m": "9 +", "cq": "26 + 16", "p": "+", "t": "51", "gp": "0", "g": "F"},
+      {"c": "107-108", "n": "English 1st & English 2nd", "m": "+", "cq": "7 + 3", "p": "+", "t": "10", "gp": "0", "g": "F"},
+      {"c": "154", "n": "ICT", "m": "", "cq": "12", "p": "", "t": "12", "gp": "0", "g": "F"},
+      {"c": "111", "n": "Islam & Moral Education", "m": "15", "cq": "14", "p": "", "t": "29", "gp": "0", "g": "F"},
+      {"c": "109", "n": "MATH", "m": "22", "cq": "2", "p": "", "t": "24", "gp": "0", "g": "F"},
+      {"c": "150", "n": "Bangladesh & World", "m": "10", "cq": "31", "p": "", "t": "41", "gp": "2", "g": "C"},
+      {"c": "127", "n": "General Science", "m": "12", "cq": "20", "p": "", "t": "32", "gp": "0", "g": "F"}
+    ]
+  },
+  {
+    "name": "MD. JAFOR ALI",
+    "roll": "14",
+    "total_score": "197",
+    "gpa": "F (0.0)",
+    "failed_count": 5,
+    "subjects": [
+      {"c": "101-102", "n": "Bangla 1st & Bangla 2nd", "m": "4 +", "cq": "28 + 18", "p": "+", "t": "50", "gp": "0", "g": "F"},
+      {"c": "107-108", "n": "English 1st & English 2nd", "m": "+", "cq": "5 + 3", "p": "+", "t": "8", "gp": "0", "g": "F"},
+      {"c": "154", "n": "ICT", "m": "", "cq": "40", "p": "", "t": "40", "gp": "5", "g": "A+"},
+      {"c": "111", "n": "Islam & Moral Education", "m": "9", "cq": "14", "p": "", "t": "23", "gp": "0", "g": "F"},
+      {"c": "109", "n": "MATH", "m": "5", "cq": "2", "p": "", "t": "7", "gp": "0", "g": "F"},
+      {"c": "150", "n": "Bangladesh & World", "m": "10", "cq": "25", "p": "", "t": "35", "gp": "1", "g": "D"},
+      {"c": "127", "n": "General Science", "m": "8", "cq": "26", "p": "", "t": "34", "gp": "0", "g": "F"}
+    ]
+  },
+  {
+    "name": "MD. SAGOR ALI",
+    "roll": "25",
+    "total_score": "191",
+    "gpa": "F (0.0)",
+    "failed_count": 5,
+    "subjects": [
+      {"c": "101-102", "n": "Bangla 1st & Bangla 2nd", "m": "10 +", "cq": "19 + 14", "p": "+", "t": "43", "gp": "0", "g": "F"},
+      {"c": "107-108", "n": "English 1st & English 2nd", "m": "+", "cq": "5 + 3", "p": "+", "t": "8", "gp": "0", "g": "F"},
+      {"c": "154", "n": "ICT", "m": "", "cq": "29", "p": "", "t": "29", "gp": "3", "g": "B"},
+      {"c": "111", "n": "Islam & Moral Education", "m": "11", "cq": "20", "p": "", "t": "31", "gp": "0", "g": "F"},
+      {"c": "109", "n": "MATH", "m": "10", "cq": "0", "p": "", "t": "10", "gp": "0", "g": "F"},
+      {"c": "150", "n": "Bangladesh & World", "m": "10", "cq": "30", "p": "", "t": "40", "gp": "2", "g": "C"},
+      {"c": "127", "n": "General Science", "m": "14", "cq": "16", "p": "", "t": "30", "gp": "0", "g": "F"}
+    ]
+  },
+  {
+    "name": "MD RIYAD HOSSAIN",
+    "roll": "24",
+    "total_score": "182",
+    "gpa": "F (0.0)",
+    "failed_count": 5,
+    "subjects": [
+      {"c": "101-102", "n": "Bangla 1st & Bangla 2nd", "m": "7 +", "cq": "11 + 16", "p": "+", "t": "34", "gp": "0", "g": "F"},
+      {"c": "107-108", "n": "English 1st & English 2nd", "m": "+", "cq": "11 + 3", "p": "+", "t": "14", "gp": "0", "g": "F"},
+      {"c": "154", "n": "ICT", "m": "", "cq": "29", "p": "", "t": "29", "gp": "3", "g": "B"},
+      {"c": "111", "n": "Islam & Moral Education", "m": "15", "cq": "12", "p": "", "t": "27", "gp": "0", "g": "F"},
+      {"c": "109", "n": "MATH", "m": "20", "cq": "0", "p": "", "t": "20", "gp": "0", "g": "F"},
+      {"c": "150", "n": "Bangladesh & World", "m": "13", "cq": "25", "p": "", "t": "38", "gp": "1", "g": "D"},
+      {"c": "127", "n": "General Science", "m": "10", "cq": "10", "p": "", "t": "20", "gp": "0", "g": "F"}
+    ]
+  },
+  {
+    "name": "MD. HABIB HOSSEN",
+    "roll": "21",
+    "total_score": "159",
+    "gpa": "F (0.0)",
+    "failed_count": 6,
+    "subjects": [
+      {"c": "101-102", "n": "Bangla 1st & Bangla 2nd", "m": "6 +", "cq": "23 + 21", "p": "+", "t": "50", "gp": "0", "g": "F"},
+      {"c": "107-108", "n": "English 1st & English 2nd", "m": "+", "cq": "8 +", "p": "+", "t": "8", "gp": "0", "g": "F"},
+      {"c": "154", "n": "ICT", "m": "", "cq": "", "p": "", "t": "0", "gp": "0", "g": "F"},
+      {"c": "111", "n": "Islam & Moral Education", "m": "14", "cq": "21", "p": "", "t": "35", "gp": "0", "g": "F"},
+      {"c": "109", "n": "MATH", "m": "8", "cq": "4", "p": "", "t": "12", "gp": "0", "g": "F"},
+      {"c": "150", "n": "Bangladesh & World", "m": "10", "cq": "27", "p": "", "t": "37", "gp": "1", "g": "D"},
+      {"c": "127", "n": "General Science", "m": "9", "cq": "8", "p": "", "t": "17", "gp": "0", "g": "F"}
+    ]
+  },
+    ];
+
+    function search() {
+        const roll = document.getElementById('rollInput').value;
+        const student = studentData.find(s => s.roll === roll);
+        const box = document.getElementById('marksheetBox');
+
+        if (student) {
+            document.getElementById('sName').innerText = student.name;
+            document.getElementById('sRoll').innerText = student.roll;
+            document.getElementById('sStatus').innerText = student.failed_count === 0 ? "PASSED" : "FAILED (" + student.failed_count + ")";
+            document.getElementById('sTotal').innerText = student.total_score;
+            document.getElementById('sGPA').innerText = student.gpa;
+            document.getElementById('sFail').innerText = student.failed_count;
+
+            let rows = "";
+            student.subjects.forEach(sub => {
+                rows += `<tr>
+                    <td style="text-align:left">${sub.n}</td>
+                    <td>${sub.m || '-'}</td>
+                    <td>${sub.cq || '-'}</td>
+                    <td>${sub.p || '-'}</td>
+                    <td class="bold-text">${sub.t}</td>
+                    <td>${sub.gp}</td>
+                    <td class="bold-text">${sub.g}</td>
+                </tr>`;
+            });
+            document.getElementById('subjectBody').innerHTML = rows;
+            box.style.display = "block";
+        } else {
+            alert("Student Not Found!");
+            box.style.display = "none";
+        }
+    }
+</script>
+</body>
+</html>
